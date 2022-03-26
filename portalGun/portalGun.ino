@@ -26,23 +26,23 @@
 */
 
 #include <Wire.h>
-#include "Adafruit_LEDBackpack.h"
 #include "Adafruit_GFX.h"
 #include <ClickEncoder.h>
 #include <TimerOne.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
+#include <ShiftDisplay2.h>
 
 // Set up our LED display
-Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
+ShiftDisplay2 display(COMMON_ANODE, 4, STATIC_DRIVE);
 char displayBuffer[4];
 uint8_t dimensionLetter='C';
 
 // Set up the click encoder
 ClickEncoder *encoder;
 int16_t last, value;
-#define encoderPinA          A1
-#define encoderPinB          A0
+#define encoderPinA          A0
+#define encoderPinB          A1
 #define encoderButtonPin     A2
 
 // Steps per notch can be 1, 4, or 8. If your encoder is counting
@@ -57,10 +57,10 @@ int16_t last, value;
 const int msDelay = 500;
 
 // Set up the Green LEDs
-#define topBulbPin           9
-#define frontRightPin        3
-#define frontCenterPin       5
-#define frontLeftPin         6
+#define topBulbPin           12
+#define frontRightPin        8
+#define frontCenterPin       4
+#define frontLeftPin         2
 #define maximumBright        255
 #define mediumBright         127
 int topBulbBrightness = 255;
@@ -80,27 +80,26 @@ void timerIsr() {
 
 void setup() {
   enablePinInterupt(NAV0_PIN);
-  
+
   //Set up pin modes
   pinMode(topBulbPin, OUTPUT);
   pinMode(frontRightPin, OUTPUT);
   pinMode(frontLeftPin, OUTPUT);
   pinMode(frontCenterPin, OUTPUT);
-  
-  
+
+
   digitalWrite(frontRightPin, HIGH);
   digitalWrite(frontLeftPin, HIGH);
   digitalWrite(frontCenterPin, HIGH);
   digitalWrite(topBulbPin, HIGH);
-  
-  
+
+
   encoderSetup();
-  alpha4.begin(0x70);  // pass in the address for the LED display
-  
+
   justWokeUp = false;
-  
+
   //uncomment this to make the display run through a test at startup
-  //displayTest();
+//  displayTest();
 }
 
 void loop() {
@@ -112,32 +111,29 @@ void loop() {
     justWokeUp = false;
   }  
 
-  
+
   ClickEncoder::Button b = encoder->getButton();
   switch (b) {
     case ClickEncoder::Held:
       // Holding the button will put your trinket to sleep.
       // The trinket will wake on the next button press
-      alpha4.clear();
-      alpha4.writeDigitAscii(0, 'R');
-      alpha4.writeDigitAscii(1, 'I');
-      alpha4.writeDigitAscii(2, 'C');
-      alpha4.writeDigitAscii(3, 'K');
+      display.clear();
+      display.set("RICK");
       digitalWrite(frontRightPin, LOW);
       digitalWrite(frontLeftPin, LOW);
       digitalWrite(frontCenterPin, LOW);
       digitalWrite(topBulbPin, LOW);
-      alpha4.writeDisplay();
+      display.update();
       delay(5000);
-      alpha4.clear();
-      alpha4.writeDisplay();
+      display.clear();
+      display.update();
       delay(5000);
       justWokeUp = true;
       goToSleep();
     break;
     case ClickEncoder::Clicked:
       // When the encoder wheel is single clicked
-   
+
     break;
     case ClickEncoder::DoubleClicked:
       //If you double click the button, it sets the dimension to C137
@@ -157,7 +153,7 @@ void encoderSetup(){
     // set up encoder
     encoder = new ClickEncoder(encoderPinA, encoderPinB, encoderButtonPin, stepsPerNotch);
     encoder->setAccelerationEnabled(true);
-  
+
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr); 
     last = -1;
@@ -169,11 +165,11 @@ void updateDimension(){
   #ifdef reverseEncoderWheel
   value -= encoder->getValue();
   #endif
-  
+
   #ifndef reverseEncoderWheel
   value += encoder->getValue();
   #endif
-  
+
   if (value != last) {
     if (value > 999){
       value = 0;
@@ -192,14 +188,11 @@ void updateDimension(){
     }
     last = value;
   }
-  
-  sprintf(displayBuffer, "%03i", value);
-  alpha4.clear();
-  alpha4.writeDigitAscii(0, dimensionLetter);
-  alpha4.writeDigitAscii(1, displayBuffer[0]);
-  alpha4.writeDigitAscii(2, displayBuffer[1]);
-  alpha4.writeDigitAscii(3, displayBuffer[2]);
-  alpha4.writeDisplay();
+
+  sprintf(displayBuffer, "C%03i", value);
+  display.clear();
+  display.set(displayBuffer);
+  display.update();
 }
 
 
@@ -234,7 +227,7 @@ void goToSleep()
 // I am using the deepest sleep mode from which a
 // watchdog timer interrupt can wake the ATMega328
 
- 
+
 
 
 set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Set sleep mode.
@@ -254,12 +247,12 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
 ISR (PCINT1_vect) // handle pin change interrupt for A0 to A5 here // NAV0
 {
     /* This will bring us back from sleep. */
-  
+
   /* We detach the interrupt to stop it from 
    * continuously firing while the interrupt pin
    * is low.
    */
-  
+
   detachInterrupt(0);
 
 }
@@ -268,7 +261,7 @@ ISR (PCINT2_vect) // handle pin change interrupt for D0 to D7 here // NAV1, NAV2
 {
   // Check it was NAV1 or NAV2 and nothing else
 }
-  
+
 
 /*
 ============== Testing Methods ==================
@@ -276,34 +269,34 @@ ISR (PCINT2_vect) // handle pin change interrupt for D0 to D7 here // NAV1, NAV2
 */
 
 void displayTest() {
-  
-  alpha4.writeDigitRaw(3, 0x0);
-  alpha4.writeDigitRaw(0, 0xFFFF);
-  alpha4.writeDisplay();
+
+  display.setAt(3, 0x0);
+//  display.setAt(0, 0xFFFF);
+  display.update();
   delay(200);
-  alpha4.writeDigitRaw(0, 0x0);
-  alpha4.writeDigitRaw(1, 0xFFFF);
-  alpha4.writeDisplay();
+  display.setAt(0, 0x0);
+//  display.setAt(1, 0xFFFF);
+  display.update();
   delay(200);
-  alpha4.writeDigitRaw(1, 0x0);
-  alpha4.writeDigitRaw(2, 0xFFFF);
-  alpha4.writeDisplay();
+  display.setAt(1, 0x0);
+//  display.setAt(2, 0xFFFF);
+  display.update();
   delay(200);
-  alpha4.writeDigitRaw(2, 0x0);
-  alpha4.writeDigitRaw(3, 0xFFFF);
-  alpha4.writeDisplay();
+  display.setAt(2, 0x0);
+//  display.setAt(3, 0xFFFF);
+  display.update();
   delay(200);
-  
-  alpha4.clear();
-  alpha4.writeDisplay();
+
+  display.clear();
+  display.update();
 
   // display every character, 
   for (uint8_t i='!'; i<='z'; i++) {
-    alpha4.writeDigitAscii(0, i);
-    alpha4.writeDigitAscii(1, i+1);
-    alpha4.writeDigitAscii(2, i+2);
-    alpha4.writeDigitAscii(3, i+3);
-    alpha4.writeDisplay();
+    display.setAt(0, i);
+    display.setAt(1, i+1);
+    display.setAt(2, i+2);
+    display.setAt(3, i+3);
+    display.update();
     delay(300);
   }
 }
