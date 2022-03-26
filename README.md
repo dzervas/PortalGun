@@ -1,7 +1,7 @@
 # PortalGun
 Code to control a Portal Gun (From Rick and Morty)
 
-##Libraries
+## Libraries
 Download and install the following libraries:
 
 - [ClickEncoder](https://github.com/0xPIT/encoder)
@@ -45,5 +45,5 @@ The rotary encoder has a click button, and we can detect a single click, a doubl
 - Double Click : Reset to dimension C137
 - Hold : Turn off LEDs and put the Trinket Pro into a low power mode.
 
-##Installing SFX
+## Installing SFX
 The main branch doesn't have SFX support. Use the SFX branch to test this out (I found that the speaker inside the case was too quiet to hear.)
