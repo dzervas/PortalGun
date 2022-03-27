@@ -136,18 +136,61 @@ void loop() {
 		break;
 		case ClickEncoder::Clicked:
 			// When the encoder wheel is single clicked
-			digitalWrite(topBulbPin, HIGH);
-			delay(500);
+			display.clear();
+			display.set("-");
+			display.update();
+			digitalWrite(frontRightPin, LOW);
+			delay(100);
+			digitalWrite(frontLeftPin, LOW);
+			delay(100);
+			digitalWrite(frontCenterPin, LOW);
+			delay(100);
 			digitalWrite(topBulbPin, LOW);
+			delay(200);
+
+			digitalWrite(frontRightPin, HIGH);
+			digitalWrite(frontLeftPin, HIGH);
+			digitalWrite(frontCenterPin, HIGH);
 			delay(500);
+
+			display.clear();
+			display.set("--");
+			display.update();
+			digitalWrite(frontRightPin, LOW);
+			delay(100);
+			digitalWrite(frontLeftPin, LOW);
+			delay(100);
+			digitalWrite(frontCenterPin, LOW);
+			delay(100);
 			digitalWrite(topBulbPin, HIGH);
+			delay(200);
+
+			digitalWrite(frontRightPin, HIGH);
+			digitalWrite(frontLeftPin, HIGH);
+			digitalWrite(frontCenterPin, HIGH);
 			delay(500);
+
+			display.clear();
+			display.set("---");
+			display.update();
+			digitalWrite(frontRightPin, LOW);
+			delay(100);
+			digitalWrite(frontLeftPin, LOW);
+			delay(100);
+			digitalWrite(frontCenterPin, LOW);
+			delay(100);
 			digitalWrite(topBulbPin, LOW);
-			delay(500);
+			display.clear();
+			display.set("----");
+			display.update();
+			delay(1000);
+
+			digitalWrite(frontRightPin, HIGH);
+			digitalWrite(frontLeftPin, HIGH);
+			digitalWrite(frontCenterPin, HIGH);
 			digitalWrite(topBulbPin, HIGH);
-			delay(500);
-			digitalWrite(topBulbPin, LOW);
-			delay(500);
+			display.set("oooo");
+			display.update();
 		break;
 		case ClickEncoder::DoubleClicked:
 			//If you double click the button, it sets the dimension to C137
