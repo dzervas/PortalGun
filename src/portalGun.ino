@@ -25,6 +25,9 @@
 * 9VDC Power Supply - http://www.adafruit.com/products/63
 */
 
+#define ENC_BUTTONINTERVAL 50
+#define ENC_DECODER (1 << 2)
+
 #include <Wire.h>
 #include "Adafruit_GFX.h"
 #include <ClickEncoder.h>
@@ -40,12 +43,12 @@ uint8_t dimensionLetter='C';
 
 // Set up the click encoder
 ClickEncoder *encoder;
-int16_t last, value;
+int16_t value, lastValue;
 #define encoderPinA          A0
 #define encoderPinB          A1
 #define encoderButtonPin     A2
 
-// Steps per notch can be 1, 4, or 8. If your encoder is counting
+// Steps per notch can be 1, 2, 4, or 8. If your encoder is counting
 // to fast or too slow, change this!
 #define stepsPerNotch        4
 
@@ -73,12 +76,13 @@ int topBulbBrightness = 255;
 //Let us know if our Trinket woke up from sleep
 volatile bool justWokeUp;
 
-
 void timerIsr() {
 	encoder->service();
 }
 
 void setup() {
+	Serial.begin(9600);
+	justWokeUp = false;
 	enablePinInterupt(NAV0_PIN);
 
 	//Set up pin modes
@@ -93,19 +97,17 @@ void setup() {
 	digitalWrite(frontCenterPin, HIGH);
 	digitalWrite(topBulbPin, HIGH);
 
-
 	encoderSetup();
-
-	justWokeUp = false;
 }
 
 void loop() {
 	if (justWokeUp) {
-	  digitalWrite(frontRightPin, HIGH);
-	  digitalWrite(frontLeftPin, HIGH);
-	  digitalWrite(frontCenterPin, HIGH);
-	  digitalWrite(topBulbPin, HIGH);
-	  justWokeUp = false;
+		digitalWrite(frontRightPin, HIGH);
+		digitalWrite(frontLeftPin, HIGH);
+		digitalWrite(frontCenterPin, HIGH);
+		digitalWrite(topBulbPin, HIGH);
+		justWokeUp = false;
+		return;
 	}
 
 
@@ -123,6 +125,7 @@ void loop() {
 			display.update();
 			delay(2000);
 			display.clear();
+			display.set("");
 			display.update();
 			digitalWrite(frontRightPin, HIGH);
 			digitalWrite(frontLeftPin, HIGH);
@@ -154,25 +157,27 @@ void loop() {
 		case ClickEncoder::Open:
 			// The dimension will increment from 0-999, then roll over to the next
 			// letter. (A999 -> B000)
-			updateDimension();
+			lastValue = updateDimension();
+		break;
+		default:
 		break;
 	}
 }
 
 
 void encoderSetup() {
-	  // set up encoder
-	  encoder = new ClickEncoder(encoderPinA, encoderPinB, encoderButtonPin, stepsPerNotch);
-	  encoder->setAccelerationEnabled(true);
+	// set up encoder
+	encoder = new ClickEncoder(encoderPinA, encoderPinB, encoderButtonPin, stepsPerNotch);
+	encoder->setAccelerationEnabled(true);
 
-	  Timer1.initialize(1000);
-	  Timer1.attachInterrupt(timerIsr);
-	  last = -1;
-	  value = 137;
+	Timer1.initialize(1000);
+	Timer1.attachInterrupt(timerIsr);
+	lastValue = -1;
+	value = 137;
 }
 
 
-void updateDimension() {
+int16_t updateDimension() {
 	#ifdef reverseEncoderWheel
 		value -= encoder->getValue();
 	#endif
@@ -181,7 +186,7 @@ void updateDimension() {
 		value += encoder->getValue();
 	#endif
 
-	if (value != last) {
+	if (value != lastValue) {
 		if (value > 999) {
 			value = 0;
 			if (dimensionLetter == 'Z') {
@@ -197,17 +202,20 @@ void updateDimension() {
 				dimensionLetter--;
 			}
 		}
-		last = value;
+		Serial.print("Updating dimension ");
+		Serial.print(lastValue);
+		Serial.print(" ");
+		Serial.println(value);
+
+		sprintf(displayBuffer, "%c%03i", dimensionLetter, value);
+		// display.clear();
+		display.set(displayBuffer);
+		display.update();
+		Serial.println("Updated");
 	}
 
-	sprintf(displayBuffer, "%c%03i", dimensionLetter, value);
-	display.clear();
-	display.set(displayBuffer);
-	display.update();
+	return value;
 }
-
-
-
 
 
 /*
@@ -220,9 +228,9 @@ void updateDimension() {
 
 
 void enablePinInterupt(byte pin) {
-	  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin)); // enable pin
-	  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
-	  PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
+	*digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin)); // enable pin
+	PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
+	PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
 }
 
 void goToSleep() {
@@ -246,6 +254,7 @@ void goToSleep() {
 	// to execute from this point.
 
 	sleep_disable(); // Disable sleep mode after waking.
+	lastValue = -1;
 }
 
 ISR (PCINT0_vect) { // handle pin change interrupt for D8 to D13 here
